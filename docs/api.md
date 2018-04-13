@@ -9,7 +9,11 @@
   - [3.2 GetApp](#32-getapp)
   - [3.3 DeleteApp](#33-deleteapp)
   - [3.4 UpdateApp](#34-updateapp)
-- [4. RoomToken 的计算](#4-roomtoken-%E7%9A%84%E8%AE%A1%E7%AE%97)
+- [4. room 操作接口](#4-room-%E6%93%8D%E4%BD%9C%E6%8E%A5%E5%8F%A3)
+  - [4.1 ListUser](#41-listuser)
+  - [4.2 KickUser](#42-kickuser)
+  - [4.3 ListActiveRoom](#43-listactiveroom)
+- [5. RoomToken 的计算](#5-roomtoken-%E7%9A%84%E8%AE%A1%E7%AE%97)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -22,7 +26,7 @@ Qiniu RTC Server API 提供为 Qiniu 连麦 SDK 提供了权限验证和房间�
 
 # 2. HTTP请求鉴权
 
-Qiniu RTC Server API 通过 Qiniu Authorization 方式进行鉴权，每个房间管理HTTP 请求头部需增加一个 Authorization 字段：
+Qiniu RTC Server API 通过 Qiniu Authorization 方式进行鉴权，每个房间管理 HTTP 请求头部需增加一个 Authorization 字段：
 
 ```
 Authorization: "<QiniuToken>"
@@ -30,7 +34,7 @@ Authorization: "<QiniuToken>"
 
 **QiniuToken**: 管理凭证，用于鉴权。
 
-使用七牛颁发的`AccessKey`和`SecretKey`，对本次http请求的信息进行签名，生成管理凭证。签名的原始数据包括http请求的`Method`, `Path`, `RawQuery`, `Content-Type`及`Body`等信息，这些信息的获取方法取决于具体所用的编程语言，建议参照七牛提供的SDK代码。
+使用七牛颁发的`AccessKey`和`SecretKey`，对本次 http 请求的信息进行签名，生成管理凭证。签名的原始数据包括http请求的 `Method`, `Path`, `RawQuery`, `Content-Type` 及 `Body` 等信息，这些信息的获取方法取决于具体所用的编程语言，建议参照七牛提供的 SDK 代码。
 计算过程及伪代码如下：
 
 ```
@@ -79,6 +83,7 @@ encodedSign = urlsafe_base64_encode(sign)
 ## 3.1 CreateApp
 
 ```
+Host rtc.qiniuapi.com
 POST /v3/apps
 Authorization: qiniu mac
 Content-Type: application/json
@@ -87,19 +92,22 @@ Content-Type: application/json
     "title": "<Title>",
     "maxUsers": <MaxUsers>,
     "noAutoCloseRoom": <NoAutoCloseRoom>,
-    "noAutoCreateRoom": <NoAutoCreateRoom>
+    "noAutoCreateRoom": <NoAutoCreateRoom>,
+    "noAutoKickUser": <NoAutoKickUser>
 }
 ```
 
 **Hub**: 绑定的直播 hub，可选，使用此 hub 的资源进行推流等业务功能，hub 与 app 必须属于同一个七牛账户。
 
-**Title**: app 的名称，可选，注意，Title不是唯一标识，重复 create 动作将生成多个 app。
+**Title**: app 的名称，可选，注意，Title 不是唯一标识，重复 create 动作将生成多个 app。
 
 **MaxUsers**: int 类型，可选，连麦房间支持的最大在线人数。
 
-**NoAutoCloseRoom**: bool 类型，可选，禁止自动关闭房间。
+**NoAutoCloseRoom**: bool 类型，可选，禁止自动关闭房间。默认为 false ，即用户退出房间后，房间会被主动清理释放。
 
-**NoAutoCreateRoom**: bool 类型，可选，禁止自动创建房间。
+**NoAutoCreateRoom**: bool 类型，可选，禁止自动创建房间。默认为 false ，即不需要主动调用接口创建即可加入房间。
+
+**NoAutoKickUser**: bool 类型，可选，禁止自动踢人（抢流）。默认为 false ，即同一个身份的 client (app/room/user) ，新的连麦请求可以成功，旧连接被关闭。
 
 ```
 200 OK 
@@ -110,6 +118,7 @@ Content-Type: application/json
     "maxUsers": <MaxUsers>,
     "noAutoCloseRoom": <NoAutoCloseRoom>,
     "noAutoCreateRoom": <NoAutoCreateRoom>,
+    "noAutoKickUser": <NoAutoKickUser>,
     "createdAt": <CreatedAt>,
     "updatedAt": <UpdatedAt>
 }
@@ -131,6 +140,8 @@ Content-Type: application/json
 
 **NoAutoCreateRoom**: bool 类型，禁止自动创建房间。
 
+**NoAutoKickUser**: bool 类型，禁止自动踢人。
+
 **CreatedAt**: time 类型，app 创建的时间。
 
 **UpdatedAt**: time 类型，app 更新的时间。
@@ -138,6 +149,7 @@ Content-Type: application/json
 ## 3.2 GetApp
 
 ```
+Host rtc.qiniuapi.com
 GET /v3/apps/<AppID> 
 Authorization: qiniu mac
 ```
@@ -153,7 +165,13 @@ Authorization: qiniu mac
     "maxUsers": <MaxUsers>,
     "noAutoCloseRoom": <NoAutoCloseRoom>,
     "noAutoCreateRoom": <NoAutoCreateRoom>,
+    "noAutoKickUser": <NoAutoKickUser>,
     "mergePublishRtmp": {
+        "audioOnly": <AudioOnly>,
+        "height": <OutputHeight>,
+        "width": <OutputHeight>,
+        "fps": <OutputFps>,
+        "kbps": <OutputKbps>,
         "url": "<URL>",
         "streamTitle": "<StreamTitle>"
     },
@@ -181,6 +199,8 @@ Authorization: qiniu mac
 
 **NoAutoCreateRoom**: bool 类型，禁止自动创建房间。
 
+**NoAutoKickUser**: bool 类型，禁止自动踢人。
+
 **MergePublishRtmp**: 连麦合流转推 RTMP 的配置。
 
 **CreatedAt**: time 类型，app 创建的时间。
@@ -190,6 +210,7 @@ Authorization: qiniu mac
 ## 3.3 DeleteApp
 
 ```
+Host rtc.qiniuapi.com
 DELETE /v3/apps/<AppID> 
 Authorization: qiniu mac
 ```
@@ -208,6 +229,7 @@ Authorization: qiniu mac
 ## 3.4 UpdateApp
 
 ```
+Host rtc.qiniuapi.com
 Post /v3/apps/<AppID> 
 Authorization: qiniu mac
 {
@@ -216,7 +238,14 @@ Authorization: qiniu mac
     "maxUsers": <MaxUsers>,
     "noAutoCloseRoom": <NoAutoCloseRoom>,
     "noAutoCreateRoom": <NoAutoCreateRoom>,
+    "noAutoKickUser": <NoAutoKickUser>,
     "mergePublishRtmp": {
+        "enable": <Enable>,
+        "audioOnly": <AudioOnly>,
+        "height": <OutputHeight>,
+        "width": <OutputHeight>,
+        "fps": <OutputFps>,
+        "kbps": <OutputKbps>,
         "url": "<URL>",
         "streamTitle": "<StreamTitle>"
     }
@@ -235,7 +264,17 @@ Authorization: qiniu mac
 
 **NoAutoCreateRoom**: bool 指针指型，可选，true 表示禁止自动创建房间。
 
-**MergePublishRtmp**: 连麦合流转推 RTMP 的配置，可选择。可以显示的直接配置转推 URL，也可以通过指定 streamTitle 推流至 App 所绑定的七牛 Hub，支持魔法变量的配置。
+**NoAutoKickUser**: bool 类型，可选，禁止自动踢人。
+
+**MergePublishRtmp**: 连麦合流转推 RTMP 的配置，可选择。其详细配置包括如下
+
+- **Enable**: 布尔类型，用于开启和关闭所有房间的合流功能。
+- **AudioOnly**: 布尔类型，可选，指定是否只合成音频。
+- **Height**, **Width**: int64，可选，指定合流输出的高和宽，默认为 640 x 480。
+- **OutputFps**: int64，可选，指定合流输出的帧率，默认为 25 fps 。
+- **OutputKbps**: int64，可选，指定合流输出的码率，默认为 1000 。
+- **URL**: 合流后转推旁路直播的地址，可选，支持魔法变量配置按照连麦房间号生成不同的推流地址。如果是转推到七牛直播云，不建议使用该配置。
+- **StreamTitle**: 转推七牛直播云的流名，可选，支持魔法变量配置按照连麦房间号生成不同的流名。例如，配置 Hub 为 `qn-zhibo` ，配置 StreamTitle 为 `$(roomName)` ，则房间 meeting-001 的合流将会被转推到 rtmp://pili-publish.qn-zhibo.***.com/qn-zhibo/meeting-001地址。详细配置细则，请咨询七牛技术支持。
 
 ```
 200 OK 
@@ -246,7 +285,14 @@ Authorization: qiniu mac
     "maxUsers": <MaxUsers>,
     "noAutoCloseRoom": <NoAutoCloseRoom>,
     "noAutoCreateRoom": <NoAutoCreateRoom>,
+    "noAutoKickUser": <NoAutoKickUser>,
     "mergePublishRtmp": {
+        "enable": <Enable>,
+        "audioOnly": <AudioOnly>,
+        "height": <OutputHeight>,
+        "width": <OutputHeight>,
+        "fps": <OutputFps>,
+        "kbps": <OutputKbps>,
         "url": "<URL>",
         "streamTitle": "<StreamTitle>"
     },
@@ -278,6 +324,8 @@ Authorization: qiniu mac
 
 **NoAutoCreateRoom**: bool 类型，禁止自动创建房间。
 
+**NoAutoKickUser**: bool 类型，禁止自动踢人。
+
 **MergePublishRtmp**: 连麦合流转推 RTMP 的配置。
 
 **CreatedAt**: time 类型，app 创建的时间。
@@ -289,10 +337,9 @@ Authorization: qiniu mac
 ## 4.1 ListUser
 
 ```
-
+Host rtc.qiniuapi.com
 GET /v3/apps/<AppID>/rooms/<RoomName>/users
 Authorization: qiniu mac
-
 ```
 
 **AppID**: 连麦房间所属的 app 。
@@ -319,6 +366,7 @@ Authorization: qiniu mac
 ## 4.2 KickUser
 
 ```
+Host rtc.qiniuapi.com
 DELETE /v3/apps/<AppID>/rooms/<RoomName>/users/<UserID>
 Authorization: qiniu mac
 ```
@@ -348,6 +396,7 @@ Authorization: qiniu mac
 ## 4.3 ListActiveRoom
 
 ```
+Host rtc.qiniuapi.com
 GET /v3/apps/<AppID>/rooms?prefix=<RoomNamePrefix>&offset=<Offset>&limit=<Limit>
 Authorization: qiniu mac
 ```
@@ -389,7 +438,6 @@ Authorization: qiniu mac
 计算方法：
 
 ```
-
 // 1. 定义房间管理凭证，并对凭证字符做URL安全的Base64编码
 roomAccess = {
     "appId": "<AppID>"
@@ -409,13 +457,13 @@ encodedSign = urlsafe_base64_encode(sign)
 roomToken = "<AccessKey>" + ":" + encodedSign + ":" + encodedRoomAccess
 ```
 
-**AppID**: 房间所属帐号的 app。
+**AppID**: 房间所属帐号的 app 。
 
-**RoomName**: 房间名称，需满足规格`^[a-zA-Z0-9_-]{3,64}$`
+**RoomName**: 房间名称，需满足规格 `^[a-zA-Z0-9_-]{3,64}$`
 
-**UserID**: 请求加入房间的用户ID，需满足规格`^[a-zA-Z0-9_-]{3,50}$`
+**UserID**: 请求加入房间的用户 ID，需满足规格 `^[a-zA-Z0-9_-]{3,50}$`
 
-**ExpireAt**: int64类型，鉴权的有效时间，传入以秒为单位的64位Unix绝对时间，token将在该时间后失效。
+**ExpireAt**: int64 类型，鉴权的有效时间，传入以秒为单位的64位Unix绝对时间，token 将在该时间后失效。
 
 **Permission**: 该用户的房间管理权限，"admin" 或 "user"，默认为 "user" 。当权限角色为 "admin" 时，拥有将其他用户移除出房间等特权.
 
