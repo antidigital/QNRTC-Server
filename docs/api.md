@@ -20,7 +20,7 @@
 
 # 1. 概述
 
-Qiniu RTC Server API 提供为 Qiniu 连麦 SDK 提供了权限验证和房间管理功能，API 均采用 REST 接口。
+Qiniu RTC Server API 为七牛实时音视频云提供权限验证和房间管理功能，API 均采用 REST 接口。
 
 
 
@@ -79,6 +79,8 @@ encodedSign = urlsafe_base64_encode(sign)
 
 
 # 3. app 操作接口
+
+app 是客户在七牛实时音视频云的业务配置集合。一个 app 帐号下的连麦房间（频道）拥有独立的命名空间，并且这些房间的可配置功能选项遵从 app 的配置，例如人数限制、是否允许抢流、合流、旁路直播等。一个客户允许创建多个不同的 app ，以实现不同的配置需求；不同 app 下面所属的同名房间并不互通。
 
 ## 3.1 CreateApp
 
@@ -333,6 +335,8 @@ Authorization: qiniu mac
 **UpdatedAt**: time 类型，app 更新的时间。
 
 # 4. room 操作接口
+
+一次连麦过程，多个终端音视频通信行为的管理是通过 room 进行的。一个连麦房间必然属于某一个 app。房间无需主动创建或删除，用户直接使用客户端 sdk 指定某个 app 和 room 进行连麦即可加入房间。通过接口可以查询 app 下所有的活跃房间，也可以对某一个房间做相关的业务操作。
 
 ## 4.1 ListUser
 
