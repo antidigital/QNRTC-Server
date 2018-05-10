@@ -155,6 +155,7 @@ Authorization: qiniu mac
     "maxUsers": <MaxUsers>,
     "noAutoKickUser": <NoAutoKickUser>,
     "mergePublishRtmp": {
+        "enable": <Enable>,
         "audioOnly": <AudioOnly>,
         "height": <OutputHeight>,
         "width": <OutputHeight>,
